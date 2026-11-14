@@ -12,7 +12,7 @@ from xml.etree.ElementTree import (
 
 
 from graph import (
-    build_graph, read_graph,
+    build_graph, load_order, read_graph,
 )
 from maven import direct_dependencies
 
@@ -148,6 +148,10 @@ def build_parser():
     parser.add_argument(
         "--filter", type=filter_text
     )
+    parser.add_argument(
+        "--load-order",
+        action="store_true",
+    )
     return parser
 
 
@@ -184,6 +188,9 @@ def main():
             options.max_depth,
             options.filter,
         )
+        if options.load_order:
+            print(*load_order(graph))
+            return
     except (OSError, ValueError,
             ParseError) as error:
         parser.error(str(error))

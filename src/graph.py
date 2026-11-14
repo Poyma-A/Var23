@@ -68,3 +68,33 @@ def build_graph(root, fetch, limit,
             )
         )
     return graph
+
+
+def load_order(graph):
+    order = []
+    active = set()
+    done = set()
+    for root in graph:
+        stack = [(root, False)]
+        while stack:
+            node, leaving = stack.pop()
+            if leaving:
+                active.remove(node)
+                done.add(node)
+                order.append(node)
+            elif node in active:
+                raise ValueError(
+                    f"Cycle at {node}"
+                )
+            elif node not in done:
+                active.add(node)
+                stack.append(
+                    (node, True)
+                )
+                children = graph[node]
+                stack.extend(
+                    (child, False)
+                    for child in
+                    reversed(children)
+                )
+    return order
