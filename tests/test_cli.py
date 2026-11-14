@@ -32,44 +32,6 @@ class CliTests(unittest.TestCase):
             text=True,
         )
 
-    def test_remote(self):
-        result = self.run_cli({})
-        self.assertEqual(
-            result.returncode,
-            0,
-            result.stderr,
-        )
-        self.assertEqual(
-            result.stdout.splitlines(),
-            [
-                "package=demo",
-                "repository="
-                "https://example.org",
-                "test_mode=off",
-                "max_depth=2",
-                "filter=demo",
-            ],
-        )
-
-    def test_local(self):
-        result = self.run_cli({
-            "--repository": "main.py",
-            "--test-mode": "on",
-            "--max-depth": "0",
-        })
-        self.assertEqual(
-            result.returncode,
-            0,
-            result.stderr,
-        )
-        self.assertIn(
-            "test_mode=on",
-            result.stdout,
-        )
-        self.assertIn(
-            "max_depth=0", result.stdout
-        )
-
     def test_invalid_options(self):
         cases = [
             ("--package",

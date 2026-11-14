@@ -3,6 +3,11 @@ from argparse import ArgumentTypeError
 import re
 from pathlib import Path
 from urllib.parse import urlsplit
+from xml.etree.ElementTree import (
+    ParseError,
+)
+
+
 
 
 MIN_DEPTH = 0
@@ -26,6 +31,14 @@ def package_name(value):
     match = re.fullmatch(
         PACKAGE_PATTERN, value
     )
+    if ":" in value:
+        parts = value.split(":")
+        match = all(
+            re.fullmatch(
+                PACKAGE_PATTERN, part
+            )
+            for part in parts
+        )
     if not match:
         raise ArgumentTypeError(
             "некорректное имя пакета"
@@ -58,6 +71,7 @@ def filter_text(value):
             "печатная подстрока"
         )
     return value
+
 
 
 def valid_url(value):
@@ -99,7 +113,7 @@ def check_repository(
         parser.error(URL_ERROR)
 
 
-def main():
+def build_parser():
     parser = argparse.ArgumentParser(
         description=(
             "Конфигурация "
@@ -127,18 +141,36 @@ def main():
     parser.add_argument(
         "--filter", type=filter_text
     )
+    return parser
+
+
+def main():
+    from maven import (
+        direct_dependencies as fetch,
+    )
+
+    parser = build_parser()
     options = parser.parse_args()
     check_repository(
         parser,
         options.repository,
         options.test_mode,
     )
-
-    settings = vars(options)
-    for key, val in settings.items():
-        if val is None:
-            val = ""
-        print(f"{key}={val}")
+    if options.test_mode == "on":
+        parser.error(
+            "Тестовый граф появится "
+            "на третьем этапе"
+        )
+    try:
+        dependencies = fetch(
+            options.repository,
+            options.package,
+        )
+    except (OSError, ValueError,
+            ParseError) as error:
+        parser.error(str(error))
+    for dependency in dependencies:
+        print(dependency)
 
 
 if __name__ == "__main__":
