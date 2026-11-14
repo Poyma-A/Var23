@@ -1,6 +1,9 @@
 import argparse
 from argparse import ArgumentTypeError
 import re
+from subprocess import (
+    CalledProcessError,
+)
 from functools import partial
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -15,6 +18,7 @@ from graph import (
     build_graph, load_order, read_graph,
 )
 from maven import direct_dependencies
+from visualize import render_graph
 
 
 MIN_DEPTH = 0
@@ -148,11 +152,32 @@ def build_parser():
     parser.add_argument(
         "--filter", type=filter_text
     )
-    parser.add_argument(
+    add_output_options(parser)
+    return parser
+
+
+def add_output_options(parser):
+    outputs = (
+        parser
+        .add_mutually_exclusive_group()
+    )
+    outputs.add_argument(
         "--load-order",
         action="store_true",
     )
-    return parser
+    outputs.add_argument(
+        "--d2",
+        metavar="FILE",
+        type=d2_path,
+    )
+
+
+def d2_path(value):
+    if Path(value).suffix != ".d2":
+        raise ArgumentTypeError(
+            "Expected a .d2 filename"
+        )
+    return value
 
 
 def dependency_source(options):
@@ -188,12 +213,23 @@ def main():
             options.max_depth,
             options.filter,
         )
-        if options.load_order:
-            print(*load_order(graph))
-            return
-    except (OSError, ValueError,
-            ParseError) as error:
+        show_result(graph, options)
+    except (
+        OSError, ValueError, ParseError,
+        CalledProcessError,
+    ) as error:
         parser.error(str(error))
+
+
+def show_result(graph, options):
+    if options.d2:
+        print(render_graph(
+            graph, options.d2
+        ))
+        return
+    if options.load_order:
+        print(*load_order(graph))
+        return
     for node, children in graph.items():
         print(node, *children)
 
