@@ -1,6 +1,7 @@
 import argparse
 from argparse import ArgumentTypeError
 import re
+from functools import partial
 from pathlib import Path
 from urllib.parse import urlsplit
 from xml.etree.ElementTree import (
@@ -8,6 +9,12 @@ from xml.etree.ElementTree import (
 )
 
 
+
+
+from graph import (
+    build_graph, read_graph,
+)
+from maven import direct_dependencies
 
 
 MIN_DEPTH = 0
@@ -144,11 +151,25 @@ def build_parser():
     return parser
 
 
-def main():
-    from maven import (
-        direct_dependencies as fetch,
+def dependency_source(options):
+    if options.test_mode == "on":
+        graph = read_graph(
+            options.repository
+        )
+        if options.package not in graph:
+            raise ValueError(
+                "Unknown test package"
+            )
+        return lambda node: graph.get(
+            node, []
+        )
+    return partial(
+        direct_dependencies,
+        options.repository,
     )
 
+
+def main():
     parser = build_parser()
     options = parser.parse_args()
     check_repository(
@@ -156,21 +177,18 @@ def main():
         options.repository,
         options.test_mode,
     )
-    if options.test_mode == "on":
-        parser.error(
-            "Тестовый граф появится "
-            "на третьем этапе"
-        )
     try:
-        dependencies = fetch(
-            options.repository,
+        graph = build_graph(
             options.package,
+            dependency_source(options),
+            options.max_depth,
+            options.filter,
         )
     except (OSError, ValueError,
             ParseError) as error:
         parser.error(str(error))
-    for dependency in dependencies:
-        print(dependency)
+    for node, children in graph.items():
+        print(node, *children)
 
 
 if __name__ == "__main__":
